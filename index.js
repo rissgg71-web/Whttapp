@@ -1,1 +1,1 @@
-console.log("Bot hidup 🗿")
+console.log("Whttapp aktif 🗿")
