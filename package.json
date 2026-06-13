@@ -1,12 +1,15 @@
 {
   "name": "whttapp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "npm install && node index.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "latest",
-    "pino": "latest"
+    "pino": "latest",
+    "axios": "latest",
+    "sharp": "latest",
+    "wa-sticker-formatter": "latest"
   }
 }
