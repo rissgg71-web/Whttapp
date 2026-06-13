@@ -16,7 +16,6 @@ async function startBot() {
 
   sock.ev.on("creds.update", saveCreds);
 
-  // Pairing
   if (!sock.authState.creds.registered) {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -28,8 +27,8 @@ async function startBot() {
         const code = await sock.requestPairingCode(nomor);
         console.log("\nPAIRING CODE:");
         console.log(code);
-      } catch (e) {
-        console.log("Gagal pairing:", e.message);
+      } catch (err) {
+        console.log("Pairing gagal:", err.message);
       }
       rl.close();
     });
@@ -47,11 +46,11 @@ async function startBot() {
     if (connection === "close") {
       console.log("❌ Connection Closed");
 
-      const reconnect =
+      const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode !==
         DisconnectReason.loggedOut;
 
-      if (reconnect) {
+      if (shouldReconnect) {
         startBot();
       }
     }
@@ -60,8 +59,7 @@ async function startBot() {
   sock.ev.on("messages.upsert", async ({ messages }) => {
     const m = messages[0];
 
-    if (!m.message) return;
-    if (m.key.fromMe) return;
+    if (!m || !m.message) return;
 
     const from = m.key.remoteJid;
 
@@ -74,49 +72,31 @@ async function startBot() {
 
     const cmd = text.trim().split(" ")[0].toLowerCase();
 
-    // .ping
     if (cmd === ".ping") {
       await sock.sendMessage(from, {
         text: "🏓 Pong!"
       });
     }
 
-    // .owner
     if (cmd === ".owner") {
       await sock.sendMessage(from, {
         text: "🗿 Owner: rissgg71-web"
       });
     }
 
-    // .menu
     if (cmd === ".menu") {
       await sock.sendMessage(from, {
         text: `
 🗿 *WHTTAPP BOT*
 
-📌 MAIN
+⚡ MAIN
 .ping
 .menu
 .owner
 
-🎨 STICKER
-.brat teks
+🚀 STATUS
+Online
         `
-      });
-    }
-
-    // .brat
-    if (cmd === ".brat") {
-      const isi = text.replace(".brat", "").trim();
-
-      if (!isi) {
-        return sock.sendMessage(from, {
-          text: "Contoh:\n.brat Halo Cuk 🗿"
-        });
-      }
-
-      await sock.sendMessage(from, {
-        text: `🗿 BRAT:\n${isi}`
       });
     }
   });
