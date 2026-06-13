@@ -5,6 +5,7 @@ const {
 } = require("@whiskeysockets/baileys");
 
 const readline = require("readline");
+const { Sticker } = require("wa-sticker-formatter");
 
 const startTime = Date.now();
 const afkUsers = {};
@@ -47,8 +48,6 @@ async function startBot() {
     }
 
     if (connection === "close") {
-      console.log("❌ Connection Closed");
-
       const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode !==
         DisconnectReason.loggedOut;
@@ -206,17 +205,13 @@ async function startBot() {
     if (cmd === ".afk") {
       const alasan = text.replace(".afk", "").trim() || "AFK";
 
-      afkUsers[from] = {
-        reason: alasan,
-        time: Date.now()
-      };
+      afkUsers[from] = true;
 
       return sock.sendMessage(from, {
         text: `😴 AFK Aktif\nAlasan: ${alasan}`
       });
     }
 
-    // hapus AFK otomatis
     if (afkUsers[from] && cmd !== ".afk") {
       delete afkUsers[from];
 
@@ -237,12 +232,6 @@ async function startBot() {
     // .rate
     if (cmd === ".rate") {
       const isi = text.replace(".rate", "").trim();
-
-      if (!isi) {
-        return sock.sendMessage(from, {
-          text: "Contoh:\n.rate mie ayam"
-        });
-      }
 
       const nilai = Math.floor(Math.random() * 100) + 1;
 
@@ -279,26 +268,50 @@ async function startBot() {
       });
     }
 
-    // .qc
+    // .qc sticker
     if (cmd === ".qc") {
       const isi = text.replace(".qc", "").trim();
 
+      const sticker = new Sticker(
+        Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+<rect width="100%" height="100%" fill="white"/>
+<text x="50%" y="50%" text-anchor="middle" font-size="35">${isi}</text>
+</svg>
+`),
+        {
+          pack: "Whttapp",
+          author: "rissgg71-web"
+        }
+      );
+
       return sock.sendMessage(from, {
-        text: `💬 "${isi || "Kosong"}"`
+        sticker: await sticker.toBuffer()
       });
     }
 
-    // .brat
+    // .brat sticker
     if (cmd === ".brat") {
       const isi = text.replace(".brat", "").trim();
 
+      const sticker = new Sticker(
+        Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+<rect width="100%" height="100%" fill="white"/>
+<text x="50%" y="50%" text-anchor="middle" font-size="45">${isi}</text>
+</svg>
+`),
+        {
+          pack: "BRAT",
+          author: "Whttapp"
+        }
+      );
+
       return sock.sendMessage(from, {
-        text: `🗿 BRAT\n\n${isi || "Kosong"}`
+        sticker: await sticker.toBuffer()
       });
     }
     });
 }
 
 startBot();
-    
-    
