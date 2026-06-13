@@ -8,19 +8,32 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("./session");
 
   const sock = makeWASocket({
-    auth: state
+    auth: state,
+    printQRInTerminal: false
   });
 
   sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", async ({ connection }) => {
+  // Pairing Code
+  if (!sock.authState.creds.registered) {
+    const nomor = "628xxxxxxxxxx"; // GANTI NOMOR LU
+    const code = await sock.requestPairingCode(nomor);
+    console.log("PAIRING CODE:", code);
+  }
+
+  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
     if (connection === "open") {
-      console.log("Bot connected 🗿");
+      console.log("Bot Connected 🗿");
     }
 
     if (connection === "close") {
-      console.log("Reconnect...");
-      startBot();
+      const shouldReconnect =
+        lastDisconnect?.error?.output?.statusCode !==
+        DisconnectReason.loggedOut;
+
+      if (shouldReconnect) {
+        startBot();
+      }
     }
   });
 
@@ -35,14 +48,14 @@ async function startBot() {
       m.message.extendedTextMessage?.text ||
       "";
 
-    // .ping
+    console.log("Pesan:", text);
+
     if (text === ".ping") {
       await sock.sendMessage(from, {
         text: "Pong 🗿"
       });
     }
 
-    // .menu
     if (text === ".menu") {
       await sock.sendMessage(from, {
         text: `
@@ -51,12 +64,10 @@ async function startBot() {
 .ping
 .menu
 .owner
-.brat teks
-        `
+`
       });
     }
 
-    // .owner
     if (text === ".owner") {
       await sock.sendMessage(from, {
         text: "Owner: rissgg71-web 🗿"
