@@ -4,40 +4,52 @@ const {
   DisconnectReason
 } = require("@whiskeysockets/baileys");
 
-const P = require("pino");
-
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("./session");
 
   const sock = makeWASocket({
-    logger: P({ level: "silent" }),
     auth: state,
     printQRInTerminal: false
   });
 
   sock.ev.on("creds.update", saveCreds);
 
-  // Pairing Code
-  if (!sock.authState.creds.registered) {
-    const nomor = "628xxxxxxxxxx"; // GANTI NOMOR LU
-    const code = await sock.requestPairingCode(nomor);
-    console.log("\n🗿 PAIRING CODE:");
-    console.log(code);
-  }
+  let pairingRequested = false;
 
-  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
+  sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
+
+    if (connection === "connecting") {
+      console.log("🔄 Connecting...");
+    }
+
     if (connection === "open") {
-      console.log("✅ Bot Connected");
+      console.log("✅ Connected");
+    }
+
+    // Minta pairing setelah socket siap
+    if (!pairingRequested && !sock.authState.creds.registered) {
+      pairingRequested = true;
+
+      try {
+        const nomor = "628XXXXXXXXXX"; // GANTI NOMOR LU
+        const code = await sock.requestPairingCode(nomor);
+
+        console.log("\n🗿 PAIRING CODE:");
+        console.log(code);
+        console.log("");
+      } catch (e) {
+        console.log("❌ Pairing gagal:", e.message);
+      }
     }
 
     if (connection === "close") {
-      const reconnect =
+      const shouldReconnect =
         lastDisconnect?.error?.output?.statusCode !==
         DisconnectReason.loggedOut;
 
       console.log("❌ Connection Closed");
 
-      if (reconnect) {
+      if (shouldReconnect) {
         console.log("🔄 Reconnecting...");
         startBot();
       }
@@ -51,63 +63,32 @@ async function startBot() {
 
     const from = m.key.remoteJid;
 
-    const body =
+    const text =
       m.message.conversation ||
       m.message.extendedTextMessage?.text ||
       "";
 
-    const text = body.trim();
-    const args = text.split(" ");
-    const cmd = args.shift()?.toLowerCase();
-
-    console.log("📩", text);
-
-    // PING
-    if (cmd === ".ping") {
-      return sock.sendMessage(from, {
+    if (text === ".ping") {
+      await sock.sendMessage(from, {
         text: "Pong 🗿"
       });
     }
 
-    // OWNER
-    if (cmd === ".owner") {
-      return sock.sendMessage(from, {
-        text: "Owner: rissgg71-web 🗿"
-      });
-    }
-
-    // MENU
-    if (cmd === ".menu") {
-      return sock.sendMessage(from, {
+    if (text === ".menu") {
+      await sock.sendMessage(from, {
         text: `
-🗿 *WHTTAPP BOT*
+🗿 WHTTAPP BOT
 
-⚡ MAIN
 .ping
 .menu
 .owner
-
-🎨 STICKER
-.brat teks
-
-🚀 STATUS
-Online
         `
       });
     }
 
-    // BRAT SEMENTARA
-    if (cmd === ".brat") {
-      const isi = args.join(" ");
-
-      if (!isi) {
-        return sock.sendMessage(from, {
-          text: "Contoh:\n.brat Halo Cuk 🗿"
-        });
-      }
-
-      return sock.sendMessage(from, {
-        text: `🗿 BRAT:\n${isi}`
+    if (text === ".owner") {
+      await sock.sendMessage(from, {
+        text: "Owner: rissgg71-web"
       });
     }
   });
