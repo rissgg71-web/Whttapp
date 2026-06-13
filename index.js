@@ -16,6 +16,25 @@ async function startBot() {
 
   sock.ev.on("creds.update", saveCreds);
 
+  // Pairing
+  if (!sock.authState.creds.registered) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    rl.question("Isi nomor kamu dengan awalan 62:\n", async (nomor) => {
+      try {
+        const code = await sock.requestPairingCode(nomor);
+        console.log("\nPAIRING CODE:");
+        console.log(code);
+      } catch (e) {
+        console.log("Gagal pairing:", e.message);
+      }
+      rl.close();
+    });
+  }
+
   sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
     if (connection === "connecting") {
       console.log("🔄 Connecting...");
@@ -26,69 +45,56 @@ async function startBot() {
     }
 
     if (connection === "close") {
+      console.log("❌ Connection Closed");
+
       const reconnect =
         lastDisconnect?.error?.output?.statusCode !==
         DisconnectReason.loggedOut;
 
-      console.log("❌ Connection Closed");
-
       if (reconnect) {
-        console.log("🔄 Reconnecting...");
         startBot();
       }
     }
   });
 
-  if (!sock.authState.creds.registered) {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-
-    rl.question("Isi nomor kamu dengan awalan 62:\n", async (nomor) => {
-      try {
-        const code = await sock.requestPairingCode(nomor);
-        console.log("\n🗿 PAIRING CODE:");
-        console.log(code);
-      } catch (e) {
-        console.log("❌ Gagal membuat pairing code");
-        console.log(e.message);
-      }
-
-      rl.close();
-    });
-  }
-
   sock.ev.on("messages.upsert", async ({ messages }) => {
     const m = messages[0];
+
     if (!m.message) return;
     if (m.key.fromMe) return;
 
     const from = m.key.remoteJid;
 
     const text =
-      m.message.conversation ||
-      m.message.extendedTextMessage?.text ||
+      m.message?.conversation ||
+      m.message?.extendedTextMessage?.text ||
       "";
 
-    if (text === ".ping") {
+    console.log("📩", text);
+
+    const cmd = text.trim().split(" ")[0].toLowerCase();
+
+    // .ping
+    if (cmd === ".ping") {
       await sock.sendMessage(from, {
-        text: "Pong 🗿"
+        text: "🏓 Pong!"
       });
     }
 
-    if (text === ".owner") {
+    // .owner
+    if (cmd === ".owner") {
       await sock.sendMessage(from, {
-        text: "Owner: rissgg71-web 🗿"
+        text: "🗿 Owner: rissgg71-web"
       });
     }
 
-    if (text === ".menu") {
+    // .menu
+    if (cmd === ".menu") {
       await sock.sendMessage(from, {
         text: `
 🗿 *WHTTAPP BOT*
 
-⚡ MAIN
+📌 MAIN
 .ping
 .menu
 .owner
@@ -99,8 +105,15 @@ async function startBot() {
       });
     }
 
-    if (text.startsWith(".brat ")) {
-      const isi = text.slice(6);
+    // .brat
+    if (cmd === ".brat") {
+      const isi = text.replace(".brat", "").trim();
+
+      if (!isi) {
+        return sock.sendMessage(from, {
+          text: "Contoh:\n.brat Halo Cuk 🗿"
+        });
+      }
 
       await sock.sendMessage(from, {
         text: `🗿 BRAT:\n${isi}`
