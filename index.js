@@ -10,6 +10,8 @@ const axios = require("axios");
 const startTime = Date.now();
 const afkUsers = {};
 
+let botOnline = false;
+
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState("./session");
 
@@ -58,6 +60,26 @@ async function startBot() {
       "";
 
     const cmd = text.trim().split(" ")[0].toLowerCase();
+
+    const sender = m.key.participant || from;
+
+if (cmd === ".online" && sender === "6283129148179@s.whatsapp.net") {
+  botOnline = true;
+
+  return sock.sendMessage(from, {
+    text: "✅ Bot Online"
+  });
+}
+
+if (cmd === ".offline" && sender === "6283129148179@s.whatsapp.net") {
+  botOnline = false;
+
+  return sock.sendMessage(from, {
+    text: "❌ Bot Offline"
+  });
+}
+
+if (!botOnline && cmd !== ".online") return;
 // .ping
     if (cmd === ".ping") {
       return sock.sendMessage(from, {
