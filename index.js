@@ -19,7 +19,6 @@ async function startBot() {
 
   sock.ev.on("creds.update", saveCreds);
 
-  // Pairing
   if (!sock.authState.creds.registered) {
     const rl = readline.createInterface({
       input: process.stdin,
@@ -38,7 +37,6 @@ async function startBot() {
     });
   }
 
-  // Connection
   sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
     if (connection === "connecting") {
       console.log("🔄 Connecting...");
@@ -61,7 +59,6 @@ async function startBot() {
     }
   });
 
-  // Messages
   sock.ev.on("messages.upsert", async ({ messages }) => {
     const m = messages[0];
 
@@ -77,16 +74,6 @@ async function startBot() {
     const cmd = text.trim().split(" ")[0].toLowerCase();
 
     console.log("📩", text);
-
-    // Balik dari AFK
-    if (afkUsers[from] && cmd !== ".afk") {
-      delete afkUsers[from];
-
-      await sock.sendMessage(from, {
-        text: "😎 AFK dinonaktifkan."
-      });
-    }
-
     // .ping
     if (cmd === ".ping") {
       return sock.sendMessage(from, {
@@ -110,20 +97,42 @@ async function startBot() {
       });
     }
 
-    // .afk
-    if (cmd === ".afk") {
-      const alasan = text.replace(".afk", "").trim() || "AFK";
-
-      afkUsers[from] = {
-        reason: alasan,
-        time: Date.now()
-      };
+    // .menu
+    if (cmd === ".menu") {
+      const up = Math.floor((Date.now() - startTime) / 1000);
 
       return sock.sendMessage(from, {
-        text: `😴 AFK Aktif\nAlasan: ${alasan}`
+        text: `
+╭━━━〔 🗿 WHTTAPP BOT 🗿 〕━━━⬣
+┃ 👑 Owner : rissgg71-web
+┃ ⚡ Status : Online
+┃ ⏱ Runtime : ${up} detik
+╰━━━━━━━━━━━━━━━━⬣
+
+⚡ MAIN
+➜ .ping
+➜ .menu
+➜ .owner
+➜ .runtime
+
+👥 GROUP
+➜ .tagall
+➜ .hidetag
+➜ .groupinfo
+
+🎮 FUN
+➜ .afk
+➜ .cekganteng
+➜ .rate
+➜ .truth
+➜ .dare
+
+🛠️ TOOLS
+➜ .qc
+➜ .brat
+`
       });
     }
-
     // .groupinfo
     if (cmd === ".groupinfo") {
       if (!from.endsWith("@g.us")) {
@@ -191,6 +200,28 @@ async function startBot() {
       return sock.sendMessage(from, {
         text: text.replace(".hidetag", "").trim() || "🗿",
         mentions
+      });
+    }
+    // .afk
+    if (cmd === ".afk") {
+      const alasan = text.replace(".afk", "").trim() || "AFK";
+
+      afkUsers[from] = {
+        reason: alasan,
+        time: Date.now()
+      };
+
+      return sock.sendMessage(from, {
+        text: `😴 AFK Aktif\nAlasan: ${alasan}`
+      });
+    }
+
+    // hapus AFK otomatis
+    if (afkUsers[from] && cmd !== ".afk") {
+      delete afkUsers[from];
+
+      await sock.sendMessage(from, {
+        text: "😎 AFK dinonaktifkan."
       });
     }
 
@@ -265,44 +296,9 @@ async function startBot() {
         text: `🗿 BRAT\n\n${isi || "Kosong"}`
       });
     }
-
-    // .menu
-    if (cmd === ".menu") {
-      const up = Math.floor((Date.now() - startTime) / 1000);
-
-      return sock.sendMessage(from, {
-        text: `
-╭━━━〔 🗿 WHTTAPP BOT 🗿 〕━━━⬣
-┃ 👑 Owner : rissgg71-web
-┃ ⚡ Status : Online
-┃ ⏱ Runtime : ${up} detik
-╰━━━━━━━━━━━━━━━━⬣
-
-⚡ MAIN
-➜ .ping
-➜ .menu
-➜ .owner
-➜ .runtime
-
-👥 GROUP
-➜ .tagall
-➜ .hidetag
-➜ .groupinfo
-
-🎮 FUN
-➜ .afk
-➜ .cekganteng
-➜ .rate
-➜ .truth
-➜ .dare
-
-🛠️ TOOLS
-➜ .qc
-➜ .brat
-`
-      });
-    }
-  });
+    });
 }
 
 startBot();
+    
+    
