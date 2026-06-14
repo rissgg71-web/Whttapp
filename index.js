@@ -61,9 +61,7 @@ async function startBot() {
 
     const cmd = text.trim().split(" ")[0].toLowerCase();
 
-    const sender = m.key.participant || from;
-
-if (cmd === ".online" && sender === "6283129148179@s.whatsapp.net") {
+    if (cmd === ".online") {
   botOnline = true;
 
   return sock.sendMessage(from, {
@@ -71,7 +69,7 @@ if (cmd === ".online" && sender === "6283129148179@s.whatsapp.net") {
   });
 }
 
-if (cmd === ".offline" && sender === "6283129148179@s.whatsapp.net") {
+if (cmd === ".offline") {
   botOnline = false;
 
   return sock.sendMessage(from, {
