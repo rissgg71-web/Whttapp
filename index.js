@@ -7,13 +7,23 @@ const {
 const readline = require("readline");
 const axios = require("axios");
 
+const {
+  makeBrat,
+  makeBratVid,
+  makeQC,
+  toSticker
+} = require("./lib/maker");
+
 const startTime = Date.now();
+
 const afkUsers = {};
 
 let botOnline = false;
 
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("./session");
+
+  const { state, saveCreds } =
+    await useMultiFileAuthState("./session");
 
   const sock = makeWASocket({
     auth: state,
@@ -23,302 +33,479 @@ async function startBot() {
   sock.ev.on("creds.update", saveCreds);
 
   if (!sock.authState.creds.registered) {
+
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     });
 
-    rl.question("Isi nomor kamu dengan awalan 62:\n", async (nomor) => {
-      const code = await sock.requestPairingCode(nomor);
-      console.log("PAIRING CODE:", code);
-      rl.close();
-    });
+    rl.question(
+      "Isi nomor awalan 62:\n",
+      async (nomor) => {
+
+        const code =
+          await sock.requestPairingCode(nomor);
+
+        console.log(`
+╔════════════╗
+║  WHTTAPP   ║
+╚════════════╝
+
+PAIRING CODE:
+${code}
+`);
+
+        rl.close();
+      }
+    );
   }
 
-  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-    if (connection === "open") console.log("✅ Bot Connected");
+  sock.ev.on(
+    "connection.update",
+    ({ connection, lastDisconnect }) => {
 
-    if (connection === "close") {
-      const reconnect =
-        lastDisconnect?.error?.output?.statusCode !==
-        DisconnectReason.loggedOut;
+      if (connection === "open") {
+        console.log("✅ Bot Connected");
+      }
 
-      if (reconnect) startBot();
+      if (connection === "close") {
+
+        const reconnect =
+          lastDisconnect?.error?.output?.statusCode !==
+          DisconnectReason.loggedOut;
+
+        if (reconnect) startBot();
+      }
     }
-  });
+  );
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const m = messages[0];
+  sock.ev.on(
+    "messages.upsert",
+    async ({ messages }) => {
 
-    if (!m?.message) return;
+      const m = messages[0];
 
-    const from = m.key.remoteJid;
+      if (!m?.message) return;
 
-    const text =
-      m.message.conversation ||
-      m.message.extendedTextMessage?.text ||
-      "";
+      const from = m.key.remoteJid;
 
-    const cmd = text.trim().split(" ")[0].toLowerCase();
+      const text =
+        m.message.conversation ||
+        m.message.extendedTextMessage?.text ||
+        "";
 
-    if (cmd === ".online") {
-  botOnline = true;
+      const cmd =
+        text.trim().split(" ")[0].toLowerCase();
+      // ONLINE OFFLINE
 
-  return sock.sendMessage(from, {
-    text: "✅ Bot Online"
-  });
-}
+      if (cmd === ".online") {
 
-if (cmd === ".offline") {
-  botOnline = false;
+        botOnline = true;
 
-  return sock.sendMessage(from, {
-    text: "❌ Bot Offline"
-  });
-}
-
-if (!botOnline && cmd !== ".online") return;
-// .ping
-    if (cmd === ".ping") {
-      return sock.sendMessage(from, {
-        text: "🏓 Pong!"
-      });
-    }
-
-    // .owner
-    if (cmd === ".owner") {
-      return sock.sendMessage(from, {
-        text: "🗿 Owner: rissgg71-web"
-      });
-    }
-
-    // .runtime
-    if (cmd === ".runtime") {
-      const up = Math.floor((Date.now() - startTime) / 1000);
-
-      return sock.sendMessage(from, {
-        text: `⏱ Runtime: ${up} detik`
-      });
-    }
-
-    // .menu
-    if (cmd === ".menu") {
-      return sock.sendMessage(from, {
-        text: `
-╭━━━〔 🗿 WHTTAPP BOT V2 🗿 〕━━━⬣
-
-⚡ MAIN
-➜ .ping
-➜ .menu
-➜ .owner
-➜ .runtime
-
-👥 GROUP
-➜ .tagall
-➜ .hidetag
-➜ .groupinfo
-
-🎮 FUN
-➜ .afk
-➜ .cekganteng
-➜ .rate
-➜ .truth
-➜ .dare
-
-🛠️ TOOLS
-➜ .qc
-➜ .brat
-➜ .bratvid
-`
-      });
-    }
-    // .groupinfo
-    if (cmd === ".groupinfo") {
-      if (!from.endsWith("@g.us")) {
         return sock.sendMessage(from, {
-          text: "🗿 Khusus grup."
+          text: "✅ Bot Online"
         });
       }
 
-      const group = await sock.groupMetadata(from);
-      const admin = group.participants.filter(v => v.admin).length;
+      if (cmd === ".offline") {
 
-      return sock.sendMessage(from, {
-        text: `
-╭━━━〔 👥 GROUP INFO 〕━━━⬣
-┃ 📛 Nama : ${group.subject}
-┃ 👤 Member : ${group.participants.length}
-┃ 👑 Admin : ${admin}
-╰━━━━━━━━━━━━━━━━⬣
-`
-      });
-    }
+        botOnline = false;
 
-    // .tagall
-    if (cmd === ".tagall") {
-      if (!from.endsWith("@g.us")) {
         return sock.sendMessage(from, {
-          text: "🗿 Khusus grup."
+          text: "❌ Bot Offline"
         });
       }
 
-      const group = await sock.groupMetadata(from);
-      const mentions = group.participants.map(v => v.id);
+      if (!botOnline && cmd !== ".online")
+        return;
 
-      let teks = `
-╭━━━〔 📢 TAG ALL 📢 〕━━━⬣
-┃ 👥 Group : ${group.subject}
-┃ 👤 Total : ${group.participants.length}
-╰━━━━━━━━━━━━━━━━⬣
+      // PING
 
-📋 List Member
+      if (cmd === ".ping") {
+
+        return sock.sendMessage(from, {
+          text: "🏓 Pong!"
+        });
+      }
+
+      // OWNER
+
+      if (cmd === ".owner") {
+
+        return sock.sendMessage(from, {
+          text: "👑 Owner : rissgg71-web"
+        });
+      }
+
+      // RUNTIME
+
+      if (cmd === ".runtime") {
+
+        const up =
+          Math.floor(
+            (Date.now() - startTime) / 1000
+          );
+
+        return sock.sendMessage(from, {
+          text: `⏱ Runtime : ${up} Detik`
+        });
+      }
+
+      // MENU
+
+      if (cmd === ".menu") {
+
+        return sock.sendMessage(from, {
+
+          text: `
+╔════════════════════╗
+║      WHTTAPP V3    ║
+╚════════════════════╝
+
+👤 Owner : rissgg71-web
+⚡ Status : Online
+
+╭─ MAIN
+│ • .ping
+│ • .menu
+│ • .owner
+│ • .runtime
+╰──────────
+
+╭─ GROUP
+│ • .groupinfo
+│ • .tagall
+│ • .hidetag
+╰──────────
+
+╭─ FUN
+│ • .afk
+│ • .cekganteng
+│ • .rate
+│ • .truth
+│ • .dare
+╰──────────
+
+╭─ TOOLS
+│ • .qc
+│ • .brat
+│ • .bratvid
+╰──────────
+
+╭─ OWNER
+│ • .online
+│ • .offline
+╰──────────
+`
+        });
+      }
+      // GROUP INFO
+
+      if (cmd === ".groupinfo") {
+
+        if (!from.endsWith("@g.us")) {
+          return sock.sendMessage(from, {
+            text: "❌ Khusus Grup"
+          });
+        }
+
+        const group =
+          await sock.groupMetadata(from);
+
+        const admins =
+          group.participants.filter(
+            v => v.admin
+          ).length;
+
+        return sock.sendMessage(from, {
+          text: `
+╔═══ GROUP INFO ═══╗
+
+📛 Nama : ${group.subject}
+👥 Member : ${group.participants.length}
+👑 Admin : ${admins}
+
+╚══════════════════╝
+`
+        });
+      }
+
+      // TAGALL
+
+      if (cmd === ".tagall") {
+
+        if (!from.endsWith("@g.us")) {
+          return sock.sendMessage(from, {
+            text: "❌ Khusus Grup"
+          });
+        }
+
+        const group =
+          await sock.groupMetadata(from);
+
+        const mentions =
+          group.participants.map(v => v.id);
+
+        let teks =
+`📢 TAG ALL
+
+👥 ${group.subject}
 
 `;
 
-      group.participants.forEach((user, i) => {
-        teks += `${i + 1}. @${user.id.split("@")[0]}\n`;
-      });
+        group.participants.forEach(
+          (user, i) => {
 
-      return sock.sendMessage(from, {
-        text: teks,
-        mentions
-      });
-    }
+            teks +=
+`${i + 1}. @${user.id.split("@")[0]}
+`;
+          }
+        );
 
-    // .hidetag
-    if (cmd === ".hidetag") {
-      if (!from.endsWith("@g.us")) {
         return sock.sendMessage(from, {
-          text: "🗿 Khusus grup."
+          text: teks,
+          mentions
         });
       }
 
-      const group = await sock.groupMetadata(from);
-      const mentions = group.participants.map(v => v.id);
+      // HIDETAG
 
-      return sock.sendMessage(from, {
-        text: text.replace(".hidetag", "").trim() || "🗿",
-        mentions
-      });
-    }
-    // .afk
-    if (cmd === ".afk") {
-      const alasan = text.replace(".afk", "").trim() || "AFK";
+      if (cmd === ".hidetag") {
 
-      afkUsers[from] = alasan;
+        if (!from.endsWith("@g.us")) {
+          return sock.sendMessage(from, {
+            text: "❌ Khusus Grup"
+          });
+        }
 
-      return sock.sendMessage(from, {
-        text: `😴 AFK Aktif\nAlasan: ${alasan}`
-      });
-    }
+        const group =
+          await sock.groupMetadata(from);
 
-    if (afkUsers[from] && cmd !== ".afk") {
-      delete afkUsers[from];
+        const mentions =
+          group.participants.map(v => v.id);
 
-      await sock.sendMessage(from, {
-        text: "😎 AFK dinonaktifkan."
-      });
-    }
-
-    // .cekganteng
-    if (cmd === ".cekganteng") {
-      const persen = Math.floor(Math.random() * 100) + 1;
-
-      return sock.sendMessage(from, {
-        text: `😎 Tingkat Kegantengan\n\n${persen}/100 ⭐`
-      });
-    }
-
-    // .rate
-    if (cmd === ".rate") {
-      const isi = text.replace(".rate", "").trim();
-
-      const nilai = Math.floor(Math.random() * 100) + 1;
-
-      return sock.sendMessage(from, {
-        text: `📊 Rating ${isi}\n\n${nilai}/100 ⭐`
-      });
-    }
-
-    // .truth
-    if (cmd === ".truth") {
-      const list = [
-        "Siapa orang terakhir yang kamu chat?",
-        "Pernah suka teman sendiri?",
-        "Rahasia yang belum pernah kamu ceritakan?"
-      ];
-
-      return sock.sendMessage(from, {
-        text: "🎲 TRUTH\n\n" +
-          list[Math.floor(Math.random() * list.length)]
-      });
-    }
-
-    // .dare
-    if (cmd === ".dare") {
-      const list = [
-        "Tag teman favoritmu 🗿",
-        "Kirim 😂 10 kali",
-        "Ganti nama grup 1 menit"
-      ];
-
-      return sock.sendMessage(from, {
-        text: "🎲 DARE\n\n" +
-          list[Math.floor(Math.random() * list.length)]
-      });
-    }
-    // .qc
-    if (cmd === ".qc") {
-      const isi = text.replace(".qc", "").trim();
-
-      if (!isi) {
         return sock.sendMessage(from, {
-          text: "Contoh: .qc halo"
+          text:
+            text.replace(
+              ".hidetag",
+              ""
+            ).trim() || "🗿",
+          mentions
+        });
+      }
+      // AFK
+
+      if (cmd === ".afk") {
+
+        const alasan =
+          text.replace(".afk", "").trim() ||
+          "AFK";
+
+        afkUsers[from] = alasan;
+
+        return sock.sendMessage(from, {
+          text:
+`😴 AFK AKTIF
+
+📝 Alasan :
+${alasan}`
         });
       }
 
-      return sock.sendMessage(from, {
-        text: `💬 QC\n\n${isi}`
-      });
-    }
+      if (
+        afkUsers[from] &&
+        cmd !== ".afk"
+      ) {
 
-    // .brat
-    if (cmd === ".brat") {
-      const isi = text.replace(".brat", "").trim();
+        delete afkUsers[from];
 
-      if (!isi) {
-        return sock.sendMessage(from, {
-          text: "Contoh: .brat halo"
+        await sock.sendMessage(from, {
+          text: "😎 AFK Dinonaktifkan"
         });
       }
 
-      await sock.sendMessage(from, {
-        image: {
-          url: `https://api.resa.my.id/maker/brat?text=${encodeURIComponent(isi)}`
-        },
-        caption: "🗿 BRAT"
-      });
-    }
+      // CEKGANTENG
 
-    // .bratvid
-    if (cmd === ".bratvid") {
-      const isi = text.replace(".bratvid", "").trim();
+      if (cmd === ".cekganteng") {
 
-      if (!isi) {
+        const persen =
+          Math.floor(
+            Math.random() * 100
+          ) + 1;
+
         return sock.sendMessage(from, {
-          text: "Contoh: .bratvid halo"
+          text:
+`😎 Tingkat Kegantengan
+
+${persen}/100 ⭐`
         });
       }
 
-      await sock.sendMessage(from, {
-        video: {
-          url: `https://api.resa.my.id/maker/bratvid?text=${encodeURIComponent(isi)}`
-        },
-        gifPlayback: true
-      });
-    }
+      // RATE
 
-  });
+      if (cmd === ".rate") {
+
+        const isi =
+          text.replace(".rate", "").trim();
+
+        const nilai =
+          Math.floor(
+            Math.random() * 100
+          ) + 1;
+
+        return sock.sendMessage(from, {
+          text:
+`📊 Rating
+
+${isi}
+
+⭐ ${nilai}/100`
+        });
+      }
+
+      // TRUTH
+
+      if (cmd === ".truth") {
+
+        const list = [
+          "Siapa orang terakhir yang kamu chat?",
+          "Pernah suka teman sendiri?",
+          "Rahasia yang belum pernah kamu ceritakan?",
+          "Pernah bohong ke orang tua?",
+          "Siapa crush kamu sekarang?"
+        ];
+
+        return sock.sendMessage(from, {
+          text:
+`🎲 TRUTH
+
+${
+list[
+Math.floor(
+Math.random() *
+list.length
+)
+]
+}`
+        });
+      }
+
+      // DARE
+
+      if (cmd === ".dare") {
+
+        const list = [
+          "Tag teman favoritmu 🗿",
+          "Kirim 😂 10 kali",
+          "Ganti nama grup 1 menit",
+          "Spam stiker 5 kali",
+          "Voice note bilang halo"
+        ];
+
+        return sock.sendMessage(from, {
+          text:
+`🎲 DARE
+
+${
+list[
+Math.floor(
+Math.random() *
+list.length
+)
+]
+}`
+        });
+      }
+      // QC
+
+      if (cmd === ".qc") {
+
+        const isi =
+          text.replace(".qc", "").trim();
+
+        if (!isi) {
+          return sock.sendMessage(from, {
+            text: "Contoh: .qc halo"
+          });
+        }
+
+        const png =
+          await makeQC(
+            isi,
+            "Whttapp User",
+            "https://telegra.ph/file/320b066dc81928b782c7b.png"
+          );
+
+        const sticker =
+          await toSticker(
+            png,
+            "WHTTAPP",
+            "rissgg71-web"
+          );
+
+        return sock.sendMessage(from, {
+          sticker
+        });
+      }
+
+      // BRAT
+
+      if (cmd === ".brat") {
+
+        const isi =
+          text.replace(".brat", "").trim();
+
+        if (!isi) {
+          return sock.sendMessage(from, {
+            text: "Contoh: .brat halo"
+          });
+        }
+
+        const png =
+          await makeBrat(isi);
+
+        const sticker =
+          await toSticker(
+            png,
+            "WHTTAPP",
+            "rissgg71-web"
+          );
+
+        return sock.sendMessage(from, {
+          sticker
+        });
+      }
+
+      // BRATVID
+
+      if (cmd === ".bratvid") {
+
+        const isi =
+          text.replace(
+            ".bratvid",
+            ""
+          ).trim();
+
+        if (!isi) {
+          return sock.sendMessage(from, {
+            text:
+              "Contoh: .bratvid halo"
+          });
+        }
+
+        const sticker =
+          await makeBratVid(
+            isi,
+            "WHTTAPP",
+            "rissgg71-web"
+          );
+
+        return sock.sendMessage(from, {
+          sticker
+        });
+      }
+
+    });
 }
 
 startBot();
